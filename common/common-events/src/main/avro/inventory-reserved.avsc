@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "InventoryReserved",
+  "namespace": "com.stoliar.events.inventory",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "string"
+    },
+    {
+      "name": "reservedAt",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
+  ]
+}
