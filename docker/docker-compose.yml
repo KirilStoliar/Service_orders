@@ -19,6 +19,7 @@ services:
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
 
     healthcheck:
       test:
@@ -192,13 +193,30 @@ services:
         SERVICE_NAME: auth-service
 
     image: service-orders/auth-service:dev
-
     container_name: service-orders-auth-service
-
     restart: unless-stopped
 
     environment:
       SERVER_PORT: 8080
+
+      DATABASE_URL: jdbc:postgresql://postgres:5432/auth_db
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SCHEMA_REGISTRY_URL: http://redpanda:8081
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
 
     ports:
       - "8081:8080"
@@ -226,63 +244,31 @@ services:
         SERVICE_NAME: user-service
 
     image: service-orders/user-service:dev
-
     container_name: service-orders-user-service
-
     restart: unless-stopped
 
     environment:
       SERVER_PORT: 8080
 
-      DATABASE_URL: jdbc:postgresql://user-db:5432/user_db
-      DATABASE_USERNAME: user
-      DATABASE_PASSWORD: user
+      DATABASE_URL: jdbc:postgresql://postgres:5432/user_db
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
 
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SCHEMA_REGISTRY_URL: http://redpanda:8081
-
       KAFKA_CONSUMER_GROUP: user-service
+
+      JWT_SECRET: ${JWT_SECRET}
 
     ports:
       - "8082:8080"
 
     depends_on:
-      user-db:
+      postgres:
         condition: service_healthy
 
       redpanda:
         condition: service_healthy
-
-    networks:
-      - service-orders
-
-  # User Service PostgreSQL
-
-  user-db:
-    image: postgres:15
-    container_name: service-orders-user-db
-    restart: unless-stopped
-
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: user
-      POSTGRES_DB: user_db
-
-    ports:
-      - "5433:5432"
-
-    volumes:
-      - user-postgres-data:/var/lib/postgresql/data
-
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U user -d user_db"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
     networks:
       - service-orders
@@ -293,9 +279,6 @@ volumes:
 
   postgres-data:
     name: service-orders-postgres-data
-
-  user-postgres-data:
-    name: service-orders-user-postgres-data
 
   mongodb-data:
     name: service-orders-mongodb-data

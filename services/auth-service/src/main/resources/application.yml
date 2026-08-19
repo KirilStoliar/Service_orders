@@ -2,6 +2,22 @@ spring:
   application:
     name: auth-service
 
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${DATABASE_USERNAME:service_orders}
+    password: ${DATABASE_PASSWORD:service_orders_dev}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
 
@@ -11,8 +27,40 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-ttl: 24h
+    refresh-token-ttl: 30d
+    email-verification-ttl: 24h
+
+admin:
+  email: ${ADMIN_EMAIL:admin@service-orders.com}
+  password: ${ADMIN_PASSWORD:Admin123!}
+  enabled: ${ADMIN_ENABLED:true}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    try-it-out-enabled: true
+    persist-authorization: true
+    doc-expansion: none
+  show-actuator: true
+  use-management-port: false
+  packages-to-scan: com.stoliar.auth.controller

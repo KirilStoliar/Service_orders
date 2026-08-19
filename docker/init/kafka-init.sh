@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -eu
 
 BROKER="redpanda:9092"
 
@@ -30,6 +30,7 @@ create_topic() {
 }
 
 create_topic "user.created"
+create_topic "user.created.DLT"
 create_topic "order.created"
 create_topic "inventory.reserved"
 create_topic "order.status-changed"

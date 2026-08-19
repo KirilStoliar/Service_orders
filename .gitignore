@@ -61,6 +61,7 @@ logs/
 ### Environment ###
 .env
 .env.*
+!.env.example
 
 ### Generated ###
 generated/

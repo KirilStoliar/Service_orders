@@ -7,6 +7,7 @@ import com.stoliar.user.dto.UserResponse;
 import com.stoliar.user.entity.UserEntity;
 import com.stoliar.user.exception.UserAlreadyExistsException;
 import com.stoliar.user.exception.UserNotFoundException;
+import com.stoliar.user.model.Role;
 import com.stoliar.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,7 @@ import java.util.UUID;
 @Service
 public class UserService {
 
-    private static final String DEFAULT_ROLE = "ROLE_USER";
+    private static final Role DEFAULT_ROLE = Role.ROLE_USER;
 
     private final UserRepository userRepository;
 
@@ -47,7 +48,7 @@ public class UserService {
         return userRepository.findByEmailIgnoreCase(normalizeEmail(email))
                 .map(UserResponse::from)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("User not found: " + email)
+                        new UserNotFoundException(email)
                 );
     }
 

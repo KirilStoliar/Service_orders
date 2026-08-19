@@ -1,9 +1,7 @@
 package com.stoliar.user.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.stoliar.user.model.Role;
+import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -19,8 +17,9 @@ public class UserEntity {
     @Column(nullable = false, unique = true, length = 320)
     private String email;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String role;
+    private Role role;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -31,7 +30,7 @@ public class UserEntity {
     public UserEntity(
             UUID id,
             String email,
-            String role,
+            Role role,
             Instant createdAt
     ) {
         this.id = id;
@@ -44,7 +43,7 @@ public class UserEntity {
         this.email = email;
     }
 
-    public void updateRole(String role) {
+    public void updateRole(Role role) {
         this.role = role;
     }
 
@@ -56,7 +55,7 @@ public class UserEntity {
         return email;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
 

@@ -1,7 +1,9 @@
 package com.stoliar.user.dto;
 
+import com.stoliar.user.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateUserRequest(
@@ -11,8 +13,7 @@ public record UpdateUserRequest(
         @Size(max = 320)
         String email,
 
-        @NotBlank
-        @Size(max = 50)
-        String role
+        @NotNull
+        Role role
 ) {
 }

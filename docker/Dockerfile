@@ -22,6 +22,7 @@ COPY build-logic ./build-logic
 COPY common ./common
 COPY services ./services
 
+# Make Gradle wrapper executable
 RUN chmod +x ./gradlew
 
 ARG SERVICE_NAME
@@ -31,8 +32,7 @@ RUN if [ -z "$SERVICE_NAME" ]; then \
         exit 1; \
     fi
 
-RUN ./gradlew :services:${SERVICE_NAME}:bootJar --no-daemon
-
+RUN ./gradlew ":services:${SERVICE_NAME}:bootJar" --no-daemon
 
 # ============================================================
 # Runtime stage

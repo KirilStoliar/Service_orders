@@ -6,6 +6,7 @@ import com.stoliar.user.dto.UserResponse;
 import com.stoliar.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,11 +23,16 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public List<UserResponse> findAll() {
         return userService.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'ADMIN') or " +
+                    "#id.toString() == authentication.tokenAttributes['sub']"
+    )
     public UserResponse findById(
             @PathVariable UUID id
     ) {
@@ -34,6 +40,7 @@ public class UserController {
     }
 
     @GetMapping("/by-email")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public UserResponse findByEmail(
             @RequestParam String email
     ) {
@@ -41,6 +48,7 @@ public class UserController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse create(
             @Valid @RequestBody CreateUserRequest request
@@ -49,6 +57,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public UserResponse update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request
@@ -57,6 +66,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @PathVariable UUID id

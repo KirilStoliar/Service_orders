@@ -1,6 +1,7 @@
 package com.stoliar.user.dto;
 
 import com.stoliar.user.entity.UserEntity;
+import com.stoliar.user.model.Role;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -8,7 +9,7 @@ import java.util.UUID;
 public record UserResponse(
         UUID id,
         String email,
-        String role,
+        Role role,
         Instant createdAt
 ) {
 
