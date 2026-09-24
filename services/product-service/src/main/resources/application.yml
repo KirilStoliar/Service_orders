@@ -1,0 +1,56 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: product-service
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://service_orders:mongo_dev_password@localhost:27017/product_db?authSource=admin}
+      auto-index-creation: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    try-it-out-enabled: true
+    persist-authorization: true
+    doc-expansion: none
+
+  show-actuator: true
+  use-management-port: false
+
+  packages-to-scan:
+    - com.stoliar.product.controller
+
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.query: DEBUG
