@@ -1,5 +1,6 @@
 plugins {
     id("service-orders.spring-service")
+    id("service-orders.test")
 }
 
 dependencies {

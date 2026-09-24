@@ -12,6 +12,10 @@ import java.util.UUID;
                 @Index(
                         name = "idx_refresh_tokens_hash",
                         columnList = "token_hash"
+                ),
+                @Index(
+                        name = "idx_refresh_tokens_user_id",
+                        columnList = "user_id"
                 )
         }
 )
@@ -29,7 +33,12 @@ public class RefreshToken {
     )
     private AuthUser user;
 
-    @Column(name = "token_hash", nullable = false, unique = true)
+    @Column(
+            name = "token_hash",
+            nullable = false,
+            unique = true,
+            length = 44
+    )
     private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)
@@ -83,7 +92,7 @@ public class RefreshToken {
     }
 
     public boolean isExpired() {
-        return expiresAt.isBefore(Instant.now());
+        return !expiresAt.isAfter(Instant.now());
     }
 
     public boolean isRevoked() {
@@ -91,6 +100,8 @@ public class RefreshToken {
     }
 
     public void revoke() {
-        this.revokedAt = Instant.now();
+        if (revokedAt == null) {
+            revokedAt = Instant.now();
+        }
     }
 }

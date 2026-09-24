@@ -98,6 +98,20 @@ services:
     networks:
       - service-orders
 
+  # Mailpit
+
+  mailpit:
+    image: axllent/mailpit:v1.31.0
+    container_name: service-orders-mailpit
+    restart: unless-stopped
+
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+    networks:
+      - service-orders
+
   # Redpanda + Kafka + Schema Registry
 
   redpanda:
@@ -196,6 +210,9 @@ services:
     container_name: service-orders-auth-service
     restart: unless-stopped
 
+    env_file:
+      - .env
+
     environment:
       SERVER_PORT: 8080
 
@@ -208,6 +225,10 @@ services:
 
       JWT_SECRET: ${JWT_SECRET}
 
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_ENABLED: ${ADMIN_ENABLED:-true}
+
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
 
@@ -217,6 +238,16 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@service-orders.local}
+      MAIL_VERIFICATION_BASE_URL: ${MAIL_VERIFICATION_BASE_URL:-http://localhost:8081/api/v1/auth/verify}
 
     ports:
       - "8081:8080"
@@ -268,6 +299,36 @@ services:
         condition: service_healthy
 
       redpanda:
+        condition: service_healthy
+
+    networks:
+      - service-orders
+
+  # Product Service
+
+  product-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE_NAME: product-service
+
+    image: service-orders/product-service:dev
+    container_name: service-orders-product-service
+    restart: unless-stopped
+
+    environment:
+      SERVER_PORT: 8080
+
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/product_db?authSource=admin
+
+      JWT_SECRET: ${JWT_SECRET}
+
+    ports:
+      - "8083:8080"
+
+    depends_on:
+      mongodb:
         condition: service_healthy
 
     networks:

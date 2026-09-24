@@ -1,17 +1,16 @@
 package com.stoliar.auth.service;
 
+import com.stoliar.auth.dto.AuthResponse;
 import com.stoliar.auth.dto.CreateUserWithRoleRequest;
 import com.stoliar.auth.dto.LoginRequest;
+import com.stoliar.auth.dto.MessageResponse;
 import com.stoliar.auth.dto.RegisterRequest;
-import com.stoliar.auth.entity.AuthResponse;
 import com.stoliar.auth.entity.AuthUser;
-import com.stoliar.auth.entity.MessageResponse;
 import com.stoliar.auth.exception.EmailAlreadyExistsException;
 import com.stoliar.auth.exception.InvalidCredentialsException;
 import com.stoliar.auth.kafka.UserCreatedProducer;
 import com.stoliar.auth.model.Role;
 import com.stoliar.auth.repository.AuthUserRepository;
-import com.stoliar.auth.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +28,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserCreatedProducer userCreatedProducer;
     private final EmailVerificationService emailVerificationService;
+    private final EmailService emailService;
 
     public AuthService(
             AuthUserRepository userRepository,
@@ -36,7 +36,8 @@ public class AuthService {
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
             UserCreatedProducer userCreatedProducer,
-            EmailVerificationService emailVerificationService
+            EmailVerificationService emailVerificationService,
+            EmailService emailService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -44,6 +45,7 @@ public class AuthService {
         this.refreshTokenService = refreshTokenService;
         this.userCreatedProducer = userCreatedProducer;
         this.emailVerificationService = emailVerificationService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -72,13 +74,15 @@ public class AuthService {
         String verificationToken =
                 emailVerificationService.createToken(user);
 
-        System.out.println(
-                "EMAIL VERIFICATION TOKEN: " + verificationToken
+        emailService.sendVerificationEmail(
+                user,
+                verificationToken
         );
 
         userCreatedProducer.publish(
                 user.getId().toString(),
                 user.getEmail(),
+                user.getRole(),
                 user.getCreatedAt()
         );
 
@@ -88,7 +92,10 @@ public class AuthService {
     }
 
     @Transactional
-    public MessageResponse createUserWithRole(CreateUserWithRoleRequest request) {
+    public MessageResponse createUserWithRole(
+            CreateUserWithRoleRequest request
+    ) {
+
         String email = normalizeEmail(request.email());
 
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -103,44 +110,44 @@ public class AuthService {
                 passwordEncoder.encode(request.password()),
                 request.role(),
                 true,
-                true, // Сразу верифицируем
+                true,
                 now
         );
 
         userRepository.save(user);
 
-        // Генерируем токен верификации (на всякий случай)
-        String verificationToken =
-                emailVerificationService.createToken(user);
-
-        System.out.println(
-                "EMAIL VERIFICATION TOKEN for " + email + ": " + verificationToken
-        );
-
         userCreatedProducer.publish(
                 user.getId().toString(),
                 user.getEmail(),
+                user.getRole(),
                 user.getCreatedAt()
         );
 
         return new MessageResponse(
-                "User created successfully with role: " + request.role()
+                "User created successfully with role: "
+                        + request.role()
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
 
         String email = normalizeEmail(request.email());
 
         AuthUser user = userRepository
                 .findByEmailIgnoreCase(email)
-                .orElseThrow(InvalidCredentialsException::new);
+                .orElseThrow(
+                        InvalidCredentialsException::new
+                );
 
         if (!passwordEncoder.matches(
                 request.password(),
                 user.getPasswordHash()
         )) {
+            throw new InvalidCredentialsException();
+        }
+
+        if (!user.isEnabled()) {
             throw new InvalidCredentialsException();
         }
 
@@ -169,6 +176,10 @@ public class AuthService {
                 refreshTokenService.validateAndRotate(
                         rawRefreshToken
                 );
+
+        if (!user.isEnabled()) {
+            throw new InvalidCredentialsException();
+        }
 
         String accessToken =
                 jwtService.generateAccessToken(user);

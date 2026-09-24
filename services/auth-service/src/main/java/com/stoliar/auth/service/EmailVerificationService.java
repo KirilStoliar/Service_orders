@@ -22,7 +22,7 @@ public class EmailVerificationService {
 
     private final EmailVerificationTokenRepository repository;
     private final Duration tokenTtl;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom;
 
     public EmailVerificationService(
             EmailVerificationTokenRepository repository,
@@ -31,6 +31,7 @@ public class EmailVerificationService {
     ) {
         this.repository = repository;
         this.tokenTtl = tokenTtl;
+        this.secureRandom = new SecureRandom();
     }
 
     @Transactional
@@ -38,24 +39,26 @@ public class EmailVerificationService {
 
         repository.deleteByUserId(user.getId());
 
+        Instant now = Instant.now();
+
         byte[] bytes = new byte[48];
         secureRandom.nextBytes(bytes);
 
-        // Используем URL-safe Base64 без padding
-        String rawToken = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(bytes);
+        String rawToken =
+                Base64.getUrlEncoder()
+                        .withoutPadding()
+                        .encodeToString(bytes);
 
-        // Сохраняем хеш токена
-        String tokenHash = hashToken(rawToken);
+        String tokenHash =
+                hashToken(rawToken);
 
         EmailVerificationToken token =
                 new EmailVerificationToken(
                         UUID.randomUUID(),
                         user,
                         tokenHash,
-                        Instant.now().plus(tokenTtl),
-                        Instant.now()
+                        now.plus(tokenTtl),
+                        now
                 );
 
         repository.save(token);
@@ -65,43 +68,69 @@ public class EmailVerificationService {
 
     @Transactional
     public void verify(String rawToken) {
-        if (rawToken == null || rawToken.isEmpty()) {
+
+        if (rawToken == null || rawToken.isBlank()) {
             throw new InvalidCredentialsException();
         }
 
-        String tokenHash = hashToken(rawToken);
+        String tokenHash =
+                hashToken(rawToken);
 
         EmailVerificationToken token =
-                repository.findByTokenHash(tokenHash)
+                repository
+                        .findByTokenHashForUpdate(tokenHash)
                         .orElseThrow(
                                 InvalidCredentialsException::new
                         );
 
         if (token.isExpired()) {
+
+            repository.delete(token);
+
             throw new InvalidCredentialsException();
         }
 
-        // Подтверждаем email
-        token.getUser().verifyEmail();
+        AuthUser user = token.getUser();
 
-        // Удаляем использованный токен
+        if (user.isEmailVerified()) {
+
+            repository.delete(token);
+
+            return;
+        }
+
+        user.verifyEmail();
+
         repository.delete(token);
     }
 
+    @Transactional
+    public int deleteExpiredTokens() {
+
+        return repository.deleteExpiredTokens(
+                Instant.now()
+        );
+    }
+
     private String hashToken(String value) {
+
         try {
+
             MessageDigest digest =
                     MessageDigest.getInstance("SHA-256");
 
             byte[] hash =
                     digest.digest(
-                            value.getBytes(StandardCharsets.UTF_8)
+                            value.getBytes(
+                                    StandardCharsets.UTF_8
+                            )
                     );
 
             return Base64.getEncoder()
                     .encodeToString(hash);
 
         } catch (NoSuchAlgorithmException exception) {
+
             throw new IllegalStateException(
                     "SHA-256 algorithm not available",
                     exception

@@ -11,7 +11,13 @@ java {
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.compilerArgs.add("-parameters")
+    options.compilerArgs.addAll(
+        listOf(
+            "-parameters",
+            "-Xlint:deprecation",
+            "-Xlint:unchecked"
+        )
+    )
 }
 
 tasks.withType<Test>().configureEach {
@@ -20,14 +26,4 @@ tasks.withType<Test>().configureEach {
 
 tasks.withType<Jar>().configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(
-        listOf(
-            "-parameters",
-            "-Xlint:deprecation",
-            "-Xlint:unchecked"
-        )
-    )
 }

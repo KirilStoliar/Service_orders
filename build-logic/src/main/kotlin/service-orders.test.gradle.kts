@@ -11,14 +11,16 @@ jacoco {
 }
 
 tasks.named<Test>("test") {
-    finalizedBy(tasks.named("jacocoTestReport"))
+    useJUnitPlatform()
+    finalizedBy("jacocoTestReport")
 }
 
 tasks.named<JacocoReport>("jacocoTestReport") {
-    dependsOn(tasks.named("test"))
+    dependsOn("test")
 
     reports {
         xml.required.set(true)
         html.required.set(true)
+        csv.required.set(false)
     }
 }

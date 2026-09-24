@@ -5,7 +5,7 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,10 +18,10 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.CommonErrorHandler;
-import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.util.backoff.FixedBackOff;
-import org.apache.kafka.common.TopicPartition;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,18 +29,25 @@ import java.util.Map;
 @Configuration
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
+    private final String bootstrapServers;
+    private final String groupId;
+    private final String schemaRegistryUrl;
 
-    @Value("${spring.kafka.consumer.group-id}")
-    private String groupId;
-
-    @Value("${spring.kafka.properties.schema.registry.url}")
-    private String schemaRegistryUrl;
+    public KafkaConfig(
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
+            @Value("${spring.kafka.consumer.group-id:user-service}") String groupId,
+            @Value("${spring.kafka.properties.schema.registry.url}") String schemaRegistryUrl
+    ) {
+        this.bootstrapServers = bootstrapServers;
+        this.groupId = groupId;
+        this.schemaRegistryUrl = schemaRegistryUrl;
+    }
 
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
-        Map<String, Object> properties = new HashMap<>();
+
+        Map<String, Object> properties =
+                new HashMap<>();
 
         properties.put(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -58,23 +65,30 @@ public class KafkaConfig {
         );
 
         properties.put(
-                AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                AbstractKafkaSchemaSerDeConfig
+                        .SCHEMA_REGISTRY_URL_CONFIG,
                 schemaRegistryUrl
         );
 
-        return new DefaultKafkaProducerFactory<>(properties);
+        return new DefaultKafkaProducerFactory<>(
+                properties
+        );
     }
 
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate(
             ProducerFactory<String, Object> producerFactory
     ) {
-        return new KafkaTemplate<>(producerFactory);
+        return new KafkaTemplate<>(
+                producerFactory
+        );
     }
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
-        Map<String, Object> properties = new HashMap<>();
+
+        Map<String, Object> properties =
+                new HashMap<>();
 
         properties.put(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -112,7 +126,8 @@ public class KafkaConfig {
         );
 
         properties.put(
-                AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                AbstractKafkaSchemaSerDeConfig
+                        .SCHEMA_REGISTRY_URL_CONFIG,
                 schemaRegistryUrl
         );
 
@@ -121,13 +136,16 @@ public class KafkaConfig {
                 true
         );
 
-        return new DefaultKafkaConsumerFactory<>(properties);
+        return new DefaultKafkaConsumerFactory<>(
+                properties
+        );
     }
 
     @Bean
     public CommonErrorHandler kafkaErrorHandler(
             KafkaTemplate<String, Object> kafkaTemplate
     ) {
+
         DeadLetterPublishingRecoverer recoverer =
                 new DeadLetterPublishingRecoverer(
                         kafkaTemplate,
@@ -138,12 +156,13 @@ public class KafkaConfig {
                                 )
                 );
 
-        DefaultErrorHandler errorHandler = new DefaultErrorHandler(
+        return new DefaultErrorHandler(
                 recoverer,
-                new FixedBackOff(1000L, 2L)
+                new FixedBackOff(
+                        1000L,
+                        2L
+                )
         );
-
-        return errorHandler;
     }
 
     @Bean
@@ -152,11 +171,18 @@ public class KafkaConfig {
             ConsumerFactory<String, Object> consumerFactory,
             CommonErrorHandler kafkaErrorHandler
     ) {
-        ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+
+        ConcurrentKafkaListenerContainerFactory<String, Object>
+                factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
-        factory.setConsumerFactory(consumerFactory);
-        factory.setCommonErrorHandler(kafkaErrorHandler);
+        factory.setConsumerFactory(
+                consumerFactory
+        );
+
+        factory.setCommonErrorHandler(
+                kafkaErrorHandler
+        );
 
         return factory;
     }

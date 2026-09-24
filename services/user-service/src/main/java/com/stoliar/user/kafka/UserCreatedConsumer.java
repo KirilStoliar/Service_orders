@@ -18,7 +18,6 @@ public class UserCreatedConsumer {
 
     @KafkaListener(
             topics = TOPIC,
-            groupId = "${spring.kafka.consumer.group-id}",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void consume(UserCreated event) {

@@ -22,7 +22,7 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository repository;
     private final Duration refreshTokenTtl;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom;
 
     public RefreshTokenService(
             RefreshTokenRepository repository,
@@ -31,10 +31,13 @@ public class RefreshTokenService {
     ) {
         this.repository = repository;
         this.refreshTokenTtl = refreshTokenTtl;
+        this.secureRandom = new SecureRandom();
     }
 
     @Transactional
     public String create(AuthUser user) {
+
+        Instant now = Instant.now();
 
         byte[] bytes = new byte[64];
         secureRandom.nextBytes(bytes);
@@ -43,17 +46,17 @@ public class RefreshTokenService {
                 .withoutPadding()
                 .encodeToString(bytes);
 
-        String hash = hash(rawToken);
+        String tokenHash = hash(rawToken);
 
-        RefreshToken token = new RefreshToken(
+        RefreshToken refreshToken = new RefreshToken(
                 UUID.randomUUID(),
                 user,
-                hash,
-                Instant.now().plus(refreshTokenTtl),
-                Instant.now()
+                tokenHash,
+                now.plus(refreshTokenTtl),
+                now
         );
 
-        repository.save(token);
+        repository.save(refreshToken);
 
         return rawToken;
     }
@@ -61,9 +64,17 @@ public class RefreshTokenService {
     @Transactional
     public AuthUser validateAndRotate(String rawToken) {
 
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        String tokenHash = hash(rawToken);
+
         RefreshToken token = repository
-                .findByTokenHash(hash(rawToken))
-                .orElseThrow(InvalidRefreshTokenException::new);
+                .findByTokenHashForUpdate(tokenHash)
+                .orElseThrow(
+                        InvalidRefreshTokenException::new
+                );
 
         if (token.isExpired() || token.isRevoked()) {
             throw new InvalidRefreshTokenException();
@@ -73,20 +84,29 @@ public class RefreshTokenService {
 
         token.revoke();
 
-        repository.save(token);
-
         return user;
     }
 
     @Transactional
     public void revoke(String rawToken) {
 
-        repository
-                .findByTokenHash(hash(rawToken))
-                .ifPresent(token -> {
-                    token.revoke();
-                    repository.save(token);
-                });
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        String tokenHash = hash(rawToken);
+
+        RefreshToken token = repository
+                .findByTokenHashForUpdate(tokenHash)
+                .orElseThrow(
+                        InvalidRefreshTokenException::new
+                );
+
+        if (token.isExpired() || token.isRevoked()) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        token.revoke();
     }
 
     private String hash(String value) {
@@ -95,10 +115,9 @@ public class RefreshTokenService {
             MessageDigest digest =
                     MessageDigest.getInstance("SHA-256");
 
-            byte[] hash =
-                    digest.digest(
-                            value.getBytes(StandardCharsets.UTF_8)
-                    );
+            byte[] hash = digest.digest(
+                    value.getBytes(StandardCharsets.UTF_8)
+            );
 
             return Base64.getEncoder()
                     .encodeToString(hash);

@@ -1,7 +1,7 @@
 package com.stoliar.auth.controller;
 
 import com.stoliar.auth.dto.CreateUserWithRoleRequest;
-import com.stoliar.auth.entity.MessageResponse;
+import com.stoliar.auth.dto.MessageResponse;
 import com.stoliar.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
